@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grounding</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0F172A;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    padding: 0 32px;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+    padding-top: 56px;
+    padding-bottom: 0;
+    position: relative;
+  }
+
+  /* ── Progress bar ── */
+  .progress-track {
+    width: 100%;
+    height: 2px;
+    background: rgba(140, 150, 200, 0.15);
+    border-radius: 2px;
+    margin-bottom: 40px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7b8cde, #5a6fd1);
+    border-radius: 2px;
+    transition: width 0.3s linear;
+  }
+
+  /* ── Sphere ── */
+  .sphere-wrapper {
+    position: relative;
+    width: 330px;
+    height: 330px;
+    flex-shrink: 0;
+  }
+
+  /* ── Ripple rings (completion only) ── */
+  @keyframes ripple {
+    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.28; }
+    100% { transform: translate(-50%, -50%) scale(1.75); opacity: 0; }
+  }
+
+  .ripple-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 330px;
+    height: 330px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(160, 170, 220, 0.5);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sphere-wrapper.grounded .ripple-ring:nth-child(1) {
+    animation: ripple 4s ease-out infinite;
+    animation-delay: 0s;
+  }
+  .sphere-wrapper.grounded .ripple-ring:nth-child(2) {
+    animation: ripple 4s ease-out infinite;
+    animation-delay: 1.33s;
+  }
+  .sphere-wrapper.grounded .ripple-ring:nth-child(3) {
+    animation: ripple 4s ease-out infinite;
+    animation-delay: 2.66s;
+  }
+
+  canvas#sphere {
+    width: 330px;
+    height: 330px;
+    filter: drop-shadow(0 14px 28px rgba(120, 130, 200, 0.15));
+  }
+
+  /* ── Sense icon (overlaid on sphere) ── */
+  .sense-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -54%);
+    font-size: 80px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));
+  }
+
+  .sense-icon.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Step content ── */
+  .step-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 36px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .step-content.visible {
+    opacity: 1;
+  }
+
+  .instruction {
+    font-size: 22px;
+    font-weight: 400;
+    color: rgba(243, 243, 243, 0.9);
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.45;
+  }
+
+  /* ── Completion ── */
+  .completion-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: -60px;
+    gap: 10px;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+  }
+
+  .completion-content.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .completion-title {
+    font-size: 28px;
+    font-weight: 500;
+    color: rgba(243, 243, 243, 0.95);
+    line-height: 1.35;
+  }
+
+  .completion-sub {
+    font-size: 14px;
+    font-weight: 300;
+    color: rgba(243, 243, 243, 0.5);
+    line-height: 1.5;
+    max-width: 230px;
+    margin-top: 4px;
+  }
+
+  /* ── Bottom actions ── */
+  .bottom-actions {
+    position: absolute;
+    bottom: 86px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .primary-btn {
+    padding: 16px 48px;
+    width: min(282px, 100%);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: linear-gradient(135deg, #7b8cde, #5a6fd1);
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(90, 111, 209, 0.3);
+    white-space: nowrap;
+  }
+
+  .primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(90, 111, 209, 0.4);
+  }
+
+  .secondary-btn {
+    background: transparent;
+    color: rgba(100, 120, 210, 0.8);
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    cursor: pointer;
+    padding: 8px 24px;
+    border-radius: 40px;
+    transition: background 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .secondary-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* ── Responsive ── */
+  @media (max-height: 700px) {
+    .container { padding-top: 36px; }
+    .progress-track { margin-bottom: 24px; }
+    .sphere-wrapper { width: 240px; height: 240px; }
+    canvas#sphere { width: 240px; height: 240px; }
+    .sense-icon { font-size: 60px; }
+    .step-content { margin-top: 24px; }
+    .instruction { font-size: 20px; }
+    .completion-content { margin-top: 24px; }
+    .completion-title { font-size: 24px; }
+    .bottom-actions { padding-bottom: 32px; }
+  }
+
+  @media (max-width: 360px) {
+    body { padding: 0 20px; }
+    .primary-btn { font-size: 15px; padding: 14px 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="sphere-wrapper" id="sphereWrapper">
+    <div class="ripple-ring"></div>
+    <div class="ripple-ring"></div>
+    <div class="ripple-ring"></div>
+    <canvas id="sphere" width="640" height="640"></canvas>
+    <div class="sense-icon" id="senseIcon"></div>
+  </div>
+
+  <div class="step-content" id="stepContent">
+    <div class="instruction" id="instruction"></div>
+  </div>
+
+  <div class="completion-content" id="completionContent">
+    <div class="completion-title">You're here.<br>You're grounded.</div>
+    <div class="completion-sub">Take a moment to notice how you feel right now.</div>
+  </div>
+
+  <div class="bottom-actions">
+    <button class="primary-btn" id="primaryBtn" onclick="handlePrimary()">Got it (4 left)</button>
+    <button class="secondary-btn" id="secondaryBtn" onclick="handleSecondary()">Back to breathing</button>
+  </div>
+
+</div>
+
+<script>
+// ── Canvas / Sphere ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('sphere');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CX = W / 2, CY = H / 2, R = 145;
+
+let currentFill = 0.04;
+let greenBlend   = 0;    // 0 = blue fluid, 1 = green fluid
+let sphereDone   = false;
+let checkAlpha   = 0;
+let waveTime     = 0;
+
+function lerpColor(r1,g1,b1, r2,g2,b2, t) {
+  return [
+    Math.round(r1 + (r2 - r1) * t),
+    Math.round(g1 + (g2 - g1) * t),
+    Math.round(b1 + (b2 - b1) * t),
+  ];
+}
+
+function drawSphere(ts) {
+  ctx.clearRect(0, 0, W, H);
+  waveTime = ts * 0.001;
+
+  // Animate fill → 1 and green blend → 1 on completion
+  if (sphereDone) {
+    currentFill = Math.min(currentFill + 0.004, 1);
+    greenBlend  = Math.min(greenBlend  + 0.004, 1);
+    if (currentFill >= 0.85) checkAlpha = Math.min(checkAlpha + 0.025, 1);
+  }
+
+  // Soft shadow
+  const sg = ctx.createRadialGradient(CX, CY + 20, R * 0.5, CX, CY + 20, R * 1.3);
+  sg.addColorStop(0, 'rgba(120, 130, 190, 0.10)');
+  sg.addColorStop(1, 'rgba(120, 130, 190, 0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath();
+  ctx.ellipse(CX, CY + 30, R * 1.1, R * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Glass body
+  const bg = ctx.createRadialGradient(CX - R * 0.3, CY - R * 0.3, 0, CX, CY, R * 1.1);
+  bg.addColorStop(0, 'rgba(235, 238, 248, 0.95)');
+  bg.addColorStop(0.5, 'rgba(215, 220, 240, 0.85)');
+  bg.addColorStop(1, 'rgba(195, 200, 225, 0.80)');
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fill();
+
+  // Fluid (blue → green transition)
+  const waterY = (CY + R) + ((CY - R) - (CY + R)) * currentFill;
+  const wA = 3, wF = 0.018;
+  const ws1 = waveTime * 1.1, ws2 = waveTime * 0.75;
+
+  const t = greenBlend;
+  const [r0,g0,b0] = lerpColor(120,110,200,  60,180,120, t);
+  const [r1,g1,b1] = lerpColor( 70,140,255,  50,200,110, t);
+  const [r2,g2,b2] = lerpColor(155,148,215,  80,190,130, t);
+
+  const fg = ctx.createLinearGradient(CX - R, waterY, CX + R, CY + R);
+  fg.addColorStop(0,   `rgba(${r0},${g0},${b0},0.75)`);
+  fg.addColorStop(0.5, `rgba(${r1},${g1},${b1},0.80)`);
+  fg.addColorStop(1,   `rgba(${r2},${g2},${b2},0.70)`);
+  ctx.fillStyle = fg;
+  ctx.beginPath();
+  ctx.moveTo(CX - R - 10, CY + R + 10);
+  for (let x = CX - R - 10; x <= CX + R + 10; x += 2) {
+    const y = waterY
+      + Math.sin(x * wF + ws1) * wA
+      + Math.sin(x * wF * 1.5 + ws2 + 1.2) * wA * 0.4;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(CX + R + 10, CY + R + 10);
+  ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+
+  // Rim
+  ctx.strokeStyle = 'rgba(200, 210, 240, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(CX, CY, R - 1, 0, Math.PI * 2); ctx.stroke();
+
+  // Main highlight
+  const h1 = ctx.createRadialGradient(CX - R*.35, CY - R*.35, 0, CX - R*.35, CY - R*.35, R*.55);
+  h1.addColorStop(0, 'rgba(255,255,255,0.70)');
+  h1.addColorStop(0.4,'rgba(255,255,255,0.15)');
+  h1.addColorStop(1,  'rgba(255,255,255,0)');
+  ctx.fillStyle = h1;
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fill();
+
+  // Sharp highlight
+  const h2 = ctx.createRadialGradient(CX - R*.28, CY - R*.38, 0, CX - R*.28, CY - R*.38, R*.15);
+  h2.addColorStop(0, 'rgba(255,255,255,0.85)');
+  h2.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = h2;
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fill();
+
+  // White checkmark (fades in when sphere is mostly full)
+  if (checkAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = checkAlpha;
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth   = 18;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.beginPath();
+    ctx.moveTo(CX - 52, CY + 2);
+    ctx.lineTo(CX - 14, CY + 44);
+    ctx.lineTo(CX + 54, CY - 38);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  requestAnimationFrame(drawSphere);
+}
+requestAnimationFrame(drawSphere);
+
+// ── Grounding Logic ─────────────────────────────────────────────────────────
+const STEPS = [
+  { icon: '👁️', text: 'Name 5 things\nyou can see'   },
+  { icon: '✋',  text: '4 things\nyou can touch'       },
+  { icon: '👂',  text: '3 things\nyou can hear'        },
+  { icon: '👃',  text: '2 things\nyou can smell'       },
+  { icon: '👄',  text: '1 thing\nyou can taste'        },
+];
+const STEP_MS   = 15000;
+const TOTAL     = STEPS.length;
+
+let current     = -1;   // -1 = not started
+let elapsed     = 0;
+let tickId      = null;
+let lastTick    = null;
+let done        = false;
+
+const progressFill     = document.getElementById('progressFill');
+const senseIcon        = document.getElementById('senseIcon');
+const stepContent      = document.getElementById('stepContent');
+const instructionEl    = document.getElementById('instruction');
+const completionContent= document.getElementById('completionContent');
+const primaryBtn       = document.getElementById('primaryBtn');
+const secondaryBtn     = document.getElementById('secondaryBtn');
+
+function setProgress(value) {         // 0–1
+  progressFill.style.width = `${Math.min(value * 100, 100)}%`;
+}
+
+function renderStep(index) {
+  const step = STEPS[index];
+
+  // Icon transition
+  senseIcon.classList.remove('visible');
+  setTimeout(() => {
+    senseIcon.textContent = step.icon;
+    senseIcon.classList.add('visible');
+  }, 300);
+
+  // Instruction
+  stepContent.classList.remove('visible');
+  setTimeout(() => {
+    instructionEl.textContent = step.text;
+    stepContent.classList.add('visible');
+  }, 300);
+
+  // Button label
+  const left = TOTAL - 1 - index;
+  primaryBtn.textContent = left === 0 ? "I'm here" : `Got it (${left} left)`;
+}
+
+function tick(ts) {
+  if (lastTick === null) lastTick = ts;
+  const delta = ts - lastTick;
+  lastTick = ts;
+  elapsed += delta;
+
+  const stepBase = current / TOTAL;
+  const stepPart = Math.min(elapsed / STEP_MS, 1) / TOTAL;
+  setProgress(stepBase + stepPart);
+
+  if (elapsed >= STEP_MS) {
+    advanceStep();
+    return;
+  }
+  tickId = requestAnimationFrame(tick);
+}
+
+function advanceStep() {
+  cancelAnimationFrame(tickId);
+  tickId    = null;
+  lastTick  = null;
+  elapsed   = 0;
+
+  const next = current + 1;
+  if (next >= TOTAL) {
+    showCompletion();
+    return;
+  }
+  current = next;
+  renderStep(current);
+  tickId = requestAnimationFrame(tick);
+}
+
+function handlePrimary() {
+  if (done) {
+    window.location.href = 'breathing_sphere.html';
+    return;
+  }
+  // Manual advance
+  advanceStep();
+}
+
+function showCompletion() {
+  done = true;
+  setProgress(1);
+
+  senseIcon.classList.remove('visible');
+  stepContent.classList.remove('visible');
+
+  // Hide progress bar
+  document.querySelector('.progress-track').style.opacity = '0';
+
+  sphereDone = true;
+
+  setTimeout(() => {
+    completionContent.classList.add('visible');
+    document.getElementById('sphereWrapper').classList.add('grounded');
+  }, 300);
+
+  primaryBtn.textContent = 'Done';
+  secondaryBtn.classList.add('visible');
+}
+
+function handleSecondary() {
+  window.location.href = 'breathing_sphere.html';
+}
+
+// Auto-start step 1 immediately
+current = 0;
+stepContent.classList.add('visible');
+renderStep(0);
+tickId = requestAnimationFrame(tick);
+</script>
+</body>
+</html>

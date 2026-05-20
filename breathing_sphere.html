@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breathing Sphere</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0F172A;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    padding: 0 32px;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+    padding-top: 115px;
+    padding-bottom: 48px;
+    position: relative;
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .sphere-wrapper {
+    position: relative;
+    width: 330px;
+    height: 330px;
+    margin-bottom: 20px; /* account for timer ring overhang below */
+  }
+
+  canvas#sphere {
+    width: 330px;
+    height: 330px;
+    filter: drop-shadow(0 16px 32px rgba(120, 130, 200, 0.2));
+  }
+
+  .phase-label {
+    font-size: 28px;
+    font-weight: 500;
+    color: #7B8DDE;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    transition: opacity 0.6s ease;
+    min-height: 36px;
+    text-align: center;
+    margin-top: 45px;
+  }
+
+  .timer-ring {
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    width: 360px;
+    height: 360px;
+    pointer-events: none;
+  }
+
+  .timer-ring circle {
+    fill: none;
+    stroke-width: 1;
+    stroke-linecap: round;
+  }
+
+  .timer-ring .track {
+    stroke: rgba(140, 150, 200, 0.15);
+  }
+
+  .timer-ring .progress {
+    stroke: rgba(100, 140, 255, 0.5);
+    transition: stroke-dashoffset 0.1s linear;
+  }
+
+  .cycle-dots {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 63px;
+  }
+
+  .cycle-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(140, 150, 200, 0.25);
+    transition: background 0.5s ease, transform 0.5s ease;
+  }
+
+  .cycle-dot.active {
+    background: rgba(100, 140, 255, 0.6);
+    transform: scale(1.3);
+  }
+
+  .cycle-dot.done {
+    background: rgba(100, 140, 255, 0.35);
+  }
+
+  .start-btn {
+    padding: 16px 48px;
+    width: min(282px, 100%);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: #fff;
+    background: linear-gradient(135deg, #7b8cde, #5a6fd1);
+    border: none;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(90, 111, 209, 0.3);
+  }
+
+  .start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(90, 111, 209, 0.4);
+  }
+
+  .start-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .bottom-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: auto;
+    padding: 0 39px 60px;
+    position: relative;
+  }
+
+  .bottom-actions.compact {
+    margin-top: 10px;
+    padding-bottom: 24px;
+  }
+
+  .bottom-actions.compact .completion.visible {
+    gap: 20px;
+  }
+
+  .reassurance {
+    font-size: 15px;
+    font-weight: 300;
+    color: rgba(243, 243, 243, 0.7);
+    letter-spacing: 0.02em;
+    text-align: center;
+    min-height: 22px;
+    max-width: 280px;
+    line-height: 1.5;
+    transition: opacity 0.8s ease;
+    opacity: 0;
+    margin-top: 35px;
+  }
+
+  .reassurance.visible {
+    opacity: 1;
+  }
+
+  .completion {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 36px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+    width: 100%;
+    max-width: 282px;
+  }
+
+  .completion.visible {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .completion-sub {
+    font-size: 14px;
+    font-weight: 300;
+    color: rgba(243, 243, 243, 0.6);
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.5;
+    margin-bottom: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.8s ease, margin-bottom 0.8s ease, max-height 0.8s ease;
+  }
+
+  .completion-sub.visible {
+    opacity: 1;
+    margin-bottom: 50px;
+    max-height: 80px;
+  }
+
+  .ground-btn {
+    background: linear-gradient(135deg, #8b9be4, #7B8DDE);
+    box-shadow: 0 4px 20px rgba(123, 141, 222, 0.3);
+    white-space: nowrap;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .ground-btn:hover {
+    box-shadow: 0 6px 28px rgba(123, 141, 222, 0.4);
+  }
+
+  .repeat-btn {
+    background: transparent;
+    color: #5C71D2;
+    box-shadow: none;
+    font-size: 14px;
+    padding: 10px 32px;
+    border: none;
+  }
+
+  .repeat-btn:hover {
+    background: rgba(243, 243, 243, 0.06);
+    box-shadow: none;
+  }
+
+  /* ── Pantallas pequeñas (ancho) ── */
+  @media (max-width: 360px) {
+    body {
+      padding: 0 20px;
+    }
+    .start-btn {
+      padding: 14px 32px;
+      font-size: 15px;
+    }
+  }
+
+  /* ── Pantallas cortas (alto) ── */
+  @media (max-height: 700px) {
+    .container {
+      padding-top: 60px;
+      padding-bottom: 32px;
+    }
+    .sphere-wrapper {
+      width: 140px;
+      height: 140px;
+      margin-bottom: 70px;
+    }
+    canvas#sphere {
+      width: 140px;
+      height: 140px;
+    }
+    .timer-ring {
+      top: -70px;
+      left: -70px;
+      width: 280px;
+      height: 280px;
+    }
+    .phase-label {
+      font-size: 22px;
+      margin-top: 32px;
+    }
+    .reassurance {
+      font-size: 13px;
+      margin-top: 20px;
+    }
+    .bottom-actions {
+      bottom: 32px;
+    }
+    .completion {
+      gap: 20px;
+    }
+  }
+
+  /* ── Pantallas muy cortas (ej. iPhone SE landscape o 568px) ── */
+  @media (max-height: 580px) {
+    .container {
+      padding-top: 36px;
+    }
+    .sphere-wrapper {
+      width: 110px;
+      height: 110px;
+      margin-bottom: 55px;
+    }
+    canvas#sphere {
+      width: 110px;
+      height: 110px;
+    }
+    .timer-ring {
+      top: -55px;
+      left: -55px;
+      width: 220px;
+      height: 220px;
+    }
+    .phase-label {
+      font-size: 18px;
+      margin-top: 16px;
+    }
+    .bottom-actions {
+      bottom: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="main-content">
+    <div class="sphere-wrapper">
+      <canvas id="sphere" width="640" height="640"></canvas>
+      <svg class="timer-ring" viewBox="0 0 344 344">
+        <circle class="track" cx="172" cy="172" r="168" />
+        <circle class="progress" id="timerProgress" cx="172" cy="172" r="168"
+          stroke-dasharray="1055.575"
+          stroke-dashoffset="1055.575"
+          transform="rotate(-90 172 172)" />
+      </svg>
+    </div>
+
+    <div class="phase-label" id="phaseLabel">Tap to begin</div>
+
+    <div class="reassurance" id="reassurance"></div>
+
+    <div class="cycle-dots" id="cycleDots" style="display:none;">
+      <div class="cycle-dot"></div>
+      <div class="cycle-dot"></div>
+      <div class="cycle-dot"></div>
+      <div class="cycle-dot"></div>
+    </div>
+  </div>
+
+  <div class="bottom-actions">
+    <div class="completion-sub" id="completionSub"></div>
+
+    <div class="completion" id="completion">
+      <button class="start-btn ground-btn" id="groundBtn" onclick="startGrounding()">Continue grounding</button>
+      <button class="start-btn repeat-btn" id="repeatBtn" onclick="startBreathing()">Repeat breathing</button>
+    </div>
+
+    <button class="start-btn" id="startBtn" onclick="startBreathing()">Start</button>
+  </div>
+</div>
+
+<script>
+// ─── Canvas Setup ───
+const canvas = document.getElementById('sphere');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+const CX = W / 2;
+const CY = H / 2;
+const R = 145; // sphere radius
+
+// ─── State ───
+let fillLevel = 0.05;       // 0 = empty, 1 = full
+let targetFill = 0.05;
+let waveTime = 0;
+let phase = 'idle';         // idle, inhale, holdFull, exhale, holdEmpty, done
+let phaseStart = 0;
+let currentCycle = 0;
+const PHASE_DURATION = 4000; // 4 seconds per phase
+const TOTAL_CYCLES = 4;
+let animId;
+
+// ─── Drawing ───
+function drawSphere(timestamp) {
+  ctx.clearRect(0, 0, W, H);
+  waveTime = timestamp * 0.001;
+
+  // Sphere shadow
+  const shadowGrad = ctx.createRadialGradient(CX, CY + 20, R * 0.5, CX, CY + 20, R * 1.3);
+  shadowGrad.addColorStop(0, 'rgba(120, 130, 190, 0.12)');
+  shadowGrad.addColorStop(1, 'rgba(120, 130, 190, 0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.ellipse(CX, CY + 30, R * 1.1, R * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Clip to sphere
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Sphere base (glass)
+  const baseGrad = ctx.createRadialGradient(CX - R * 0.3, CY - R * 0.3, 0, CX, CY, R * 1.1);
+  baseGrad.addColorStop(0, 'rgba(235, 238, 248, 0.95)');
+  baseGrad.addColorStop(0.5, 'rgba(215, 220, 240, 0.85)');
+  baseGrad.addColorStop(1, 'rgba(195, 200, 225, 0.8)');
+  ctx.fillStyle = baseGrad;
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ─── Fluid fill ───
+  // Water level: map fillLevel to Y position
+  // fillLevel 0 => bottom of sphere, fillLevel 1 => top
+  const minY = CY + R;      // bottom
+  const maxY = CY - R;      // top
+  const waterY = minY + (maxY - minY) * fillLevel;
+
+  // Draw wavy fluid
+  const waveAmp = 6 + fillLevel * 4; // wave amplitude
+  const waveFreq = 0.018;
+  const waveSpeed1 = waveTime * 1.8;
+  const waveSpeed2 = waveTime * 1.2;
+
+  // Fluid gradient — blue-violet iridescent
+  const fluidGrad = ctx.createLinearGradient(CX - R, waterY, CX + R, CY + R);
+  fluidGrad.addColorStop(0, 'rgba(130, 120, 200, 0.75)');
+  fluidGrad.addColorStop(0.25, 'rgba(110, 100, 190, 0.7)');
+  fluidGrad.addColorStop(0.5, 'rgba(70, 140, 255, 0.8)');
+  fluidGrad.addColorStop(0.75, 'rgba(140, 130, 210, 0.65)');
+  fluidGrad.addColorStop(1, 'rgba(160, 155, 220, 0.6)');
+
+  ctx.fillStyle = fluidGrad;
+  ctx.beginPath();
+  ctx.moveTo(CX - R - 10, CY + R + 10);
+
+  // Draw wave across sphere width
+  for (let x = CX - R - 10; x <= CX + R + 10; x += 2) {
+    const wave1 = Math.sin((x * waveFreq) + waveSpeed1) * waveAmp;
+    const wave2 = Math.sin((x * waveFreq * 1.6) + waveSpeed2 + 1.3) * waveAmp * 0.5;
+    const wave3 = Math.sin((x * waveFreq * 0.7) + waveTime * 0.8 + 2.5) * waveAmp * 0.3;
+    const y = waterY + wave1 + wave2 + wave3;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.lineTo(CX + R + 10, CY + R + 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Second wave layer (violet-shifted, offset)
+  const fluidGrad2 = ctx.createLinearGradient(CX - R, waterY - 5, CX + R, CY + R);
+  fluidGrad2.addColorStop(0, 'rgba(150, 120, 220, 0.4)');
+  fluidGrad2.addColorStop(0.4, 'rgba(90, 130, 255, 0.45)');
+  fluidGrad2.addColorStop(0.7, 'rgba(130, 110, 210, 0.35)');
+  fluidGrad2.addColorStop(1, 'rgba(160, 150, 230, 0.3)');
+
+  ctx.fillStyle = fluidGrad2;
+  ctx.beginPath();
+  ctx.moveTo(CX - R - 10, CY + R + 10);
+
+  for (let x = CX - R - 10; x <= CX + R + 10; x += 2) {
+    const wave1 = Math.sin((x * waveFreq * 1.2) + waveSpeed1 * 0.7 + 2) * waveAmp * 0.8;
+    const wave2 = Math.sin((x * waveFreq * 0.9) + waveSpeed2 * 1.3 + 4) * waveAmp * 0.4;
+    const y = waterY + 4 + wave1 + wave2;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.lineTo(CX + R + 10, CY + R + 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bright caustic line at water surface
+  ctx.strokeStyle = 'rgba(80, 160, 255, 0.55)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let x = CX - R + 10; x <= CX + R - 10; x += 2) {
+    const distFromCenter = Math.abs(x - CX) / R;
+    if (distFromCenter > 0.95) continue;
+    const wave1 = Math.sin((x * waveFreq) + waveSpeed1) * waveAmp;
+    const wave2 = Math.sin((x * waveFreq * 1.6) + waveSpeed2 + 1.3) * waveAmp * 0.5;
+    const y = waterY + wave1 + wave2;
+    if (x === CX - R + 10) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Iridescent glow at water line — violet-blue shift
+  const iriGrad = ctx.createLinearGradient(CX - R, waterY - 8, CX + R, waterY + 8);
+  iriGrad.addColorStop(0, 'rgba(160, 110, 255, 0.2)');
+  iriGrad.addColorStop(0.3, 'rgba(80, 180, 255, 0.3)');
+  iriGrad.addColorStop(0.6, 'rgba(140, 100, 255, 0.25)');
+  iriGrad.addColorStop(1, 'rgba(180, 160, 255, 0.15)');
+
+  ctx.fillStyle = iriGrad;
+  ctx.beginPath();
+  for (let x = CX - R + 5; x <= CX + R - 5; x += 2) {
+    const wave1 = Math.sin((x * waveFreq) + waveSpeed1) * waveAmp;
+    const wave2 = Math.sin((x * waveFreq * 1.6) + waveSpeed2 + 1.3) * waveAmp * 0.5;
+    const y = waterY + wave1 + wave2;
+    if (x === CX - R + 5) ctx.moveTo(x, y - 10);
+    else ctx.lineTo(x, y - 10);
+  }
+  for (let x = CX + R - 5; x >= CX - R + 5; x -= 2) {
+    const wave1 = Math.sin((x * waveFreq) + waveSpeed1) * waveAmp;
+    const wave2 = Math.sin((x * waveFreq * 1.6) + waveSpeed2 + 1.3) * waveAmp * 0.5;
+    const y = waterY + wave1 + wave2;
+    ctx.lineTo(x, y + 10);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore(); // unclip
+
+  // ─── Glass overlay ───
+  // Edge refraction ring
+  ctx.strokeStyle = 'rgba(200, 210, 240, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(CX, CY, R - 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Top-left highlight (specular)
+  const hlGrad = ctx.createRadialGradient(CX - R * 0.35, CY - R * 0.35, 0, CX - R * 0.35, CY - R * 0.35, R * 0.55);
+  hlGrad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+  hlGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.15)');
+  hlGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = hlGrad;
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Small sharp highlight
+  const hlGrad2 = ctx.createRadialGradient(CX - R * 0.28, CY - R * 0.38, 0, CX - R * 0.28, CY - R * 0.38, R * 0.15);
+  hlGrad2.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+  hlGrad2.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = hlGrad2;
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bottom rim light
+  const rimGrad = ctx.createRadialGradient(CX + R * 0.3, CY + R * 0.4, 0, CX + R * 0.3, CY + R * 0.4, R * 0.5);
+  rimGrad.addColorStop(0, 'rgba(200, 210, 255, 0.15)');
+  rimGrad.addColorStop(1, 'rgba(200, 210, 255, 0)');
+  ctx.fillStyle = rimGrad;
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  animId = requestAnimationFrame(drawSphere);
+}
+
+// ─── Breathing Logic ───
+const phaseLabel = document.getElementById('phaseLabel');
+const reassurance = document.getElementById('reassurance');
+const timerProgress = document.getElementById('timerProgress');
+const completion = document.getElementById('completion');
+const completionSub = document.getElementById('completionSub');
+const circumference = 1055.575;
+const dots = document.querySelectorAll('.cycle-dot');
+
+const phaseTexts = {
+  inhale: 'Breathe in',
+  holdFull: 'Hold',
+  exhale: 'Breathe out',
+  holdEmpty: 'Hold',
+  done: 'You did it'
+};
+
+// Reassurance messages — one per cycle, shown during holdFull (peak calm moment)
+const reassuranceMessages = [
+  "This will pass. You're safe right now.",
+  "Your body is just responding.<br>There's no real danger.",
+  "You're doing great.<br>Stay with the rhythm.",
+  "You're already coming back.<br>One breath at a time."
+];
+
+let currentReassurance = -1;
+
+function showReassurance(cycleIndex) {
+  if (cycleIndex >= reassuranceMessages.length) return;
+  reassurance.innerHTML = reassuranceMessages[cycleIndex];
+  reassurance.classList.add('visible');
+}
+
+function hideReassurance() {
+  reassurance.classList.remove('visible');
+}
+
+function updatePhase(timestamp) {
+  if (phase === 'idle' || phase === 'done') return;
+
+  const elapsed = timestamp - phaseStart;
+  const progress = Math.min(elapsed / PHASE_DURATION, 1);
+
+  // Update timer ring
+  const offset = circumference * (1 - progress);
+  timerProgress.setAttribute('stroke-dashoffset', offset);
+
+  // Update fill level based on phase
+  if (phase === 'inhale') {
+    fillLevel = 0.05 + progress * 0.95; // 0.05 → 1.0
+  } else if (phase === 'holdFull') {
+    fillLevel = 1.0; // completely full, static
+  } else if (phase === 'exhale') {
+    fillLevel = 1.0 - progress * 0.95; // 1.0 → 0.05
+  } else if (phase === 'holdEmpty') {
+    fillLevel = 0.05; // completely empty, static
+  }
+
+  // Phase transition
+  if (elapsed >= PHASE_DURATION) {
+    advancePhase(timestamp);
+  }
+
+  requestAnimationFrame(updatePhase);
+}
+
+function advancePhase(timestamp) {
+  if (phase === 'inhale') {
+    setPhase('holdFull', timestamp);
+  } else if (phase === 'holdFull') {
+    setPhase('exhale', timestamp);
+  } else if (phase === 'exhale') {
+    setPhase('holdEmpty', timestamp);
+  } else if (phase === 'holdEmpty') {
+    currentCycle++;
+    dots[currentCycle - 1].classList.add('done');
+    dots[currentCycle - 1].classList.remove('active');
+
+    if (currentCycle >= TOTAL_CYCLES) {
+      phase = 'done';
+      phaseLabel.textContent = phaseTexts.done;
+      timerProgress.setAttribute('stroke-dashoffset', circumference);
+      hideReassurance();
+      document.getElementById('cycleDots').style.display = 'none';
+      completionSub.textContent = "Your breathing is steady again. Let's anchor you to the present.";
+      completionSub.classList.add('visible');
+      completion.classList.add('visible');
+      document.querySelector('.bottom-actions').classList.add('compact');
+      reassurance.style.minHeight = '0';
+      reassurance.style.marginTop = '0';
+      reassurance.style.display = 'none';
+      return;
+    }
+
+    if (currentCycle < TOTAL_CYCLES) {
+      dots[currentCycle].classList.add('active');
+    }
+    setPhase('inhale', timestamp);
+  }
+}
+
+function setPhase(newPhase, timestamp) {
+  phase = newPhase;
+  phaseStart = timestamp;
+  phaseLabel.textContent = phaseTexts[newPhase];
+  timerProgress.setAttribute('stroke-dashoffset', circumference);
+
+  // Show reassurance during holdFull of each cycle
+  if (newPhase === 'holdFull') {
+    showReassurance(currentCycle);
+  } else if (newPhase === 'inhale') {
+    hideReassurance();
+  } else if (newPhase === 'exhale') {
+    hideReassurance();
+  }
+}
+
+function startBreathing() {
+  document.getElementById('startBtn').classList.add('hidden');
+  completion.classList.remove('visible');
+  completionSub.classList.remove('visible');
+  completionSub.textContent = '';
+  document.querySelector('.bottom-actions').classList.remove('compact');
+  reassurance.style.minHeight = '';
+  reassurance.style.marginTop = '';
+  reassurance.style.display = '';
+  document.getElementById('cycleDots').style.display = 'flex';
+  currentCycle = 0;
+  fillLevel = 0.05;
+  currentReassurance = -1;
+  hideReassurance();
+
+  dots.forEach(d => {
+    d.classList.remove('active', 'done');
+  });
+  dots[0].classList.add('active');
+
+  phase = 'inhale';
+  phaseLabel.textContent = phaseTexts.inhale;
+  phaseStart = performance.now();
+  timerProgress.setAttribute('stroke-dashoffset', circumference);
+
+  requestAnimationFrame(updatePhase);
+}
+
+// ─── Grounding (placeholder) ───
+function startGrounding() {
+  // Will transition to 5-4-3-2-1 grounding exercise
+  completion.classList.remove('visible');
+  phaseLabel.textContent = 'Grounding...';
+  reassurance.textContent = 'Coming soon';
+  reassurance.classList.add('visible');
+}
+
+// ─── Start render ───
+requestAnimationFrame(drawSphere);
+</script>
+
+</body>
+</html>
