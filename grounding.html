@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grounding</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Inter:wght@500&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -245,6 +245,31 @@
     .bottom-actions { padding-bottom: 32px; }
   }
 
+  .skip-btn {
+    position: fixed;
+    top: 20px;
+    right: 32px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(243, 243, 243, 0.7);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 100;
+    padding: 4px 0;
+    transition: color 0.2s ease, opacity 0.3s ease;
+  }
+
+  .skip-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .skip-btn:hover {
+    color: rgba(243, 243, 243, 0.95);
+  }
+
   @media (max-width: 360px) {
     body { padding: 0 20px; }
     .primary-btn { font-size: 15px; padding: 14px 32px; }
@@ -252,6 +277,8 @@
 </style>
 </head>
 <body>
+
+<button class="skip-btn" onclick="skipToBreathing()">Skip</button>
 
 <div class="container">
 
@@ -500,6 +527,7 @@ function handlePrimary() {
 
 function showCompletion() {
   done = true;
+  document.querySelector('.skip-btn').classList.add('hidden');
   setProgress(1);
 
   senseIcon.classList.remove('visible');
@@ -520,6 +548,10 @@ function showCompletion() {
 }
 
 function handleSecondary() {
+  window.location.href = 'breathing_sphere.html';
+}
+
+function skipToBreathing() {
   window.location.href = 'breathing_sphere.html';
 }
 

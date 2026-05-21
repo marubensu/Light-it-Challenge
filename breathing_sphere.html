@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Breathing Sphere</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Inter:wght@500&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -160,7 +160,7 @@
 
   .reassurance {
     font-size: 15px;
-    font-weight: 300;
+    font-weight: 500;
     color: rgba(243, 243, 243, 0.7);
     letter-spacing: 0.02em;
     text-align: center;
@@ -194,9 +194,36 @@
     pointer-events: auto;
   }
 
+  .skip-btn {
+    position: fixed;
+    top: 20px;
+    right: 32px;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(243, 243, 243, 0.7);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 100;
+    padding: 4px 0;
+    transition: color 0.2s ease, opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .skip-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .skip-btn:hover {
+    color: rgba(243, 243, 243, 0.95);
+  }
+
   .completion-sub {
     font-size: 14px;
-    font-weight: 300;
+    font-weight: 500;
     color: rgba(243, 243, 243, 0.6);
     text-align: center;
     max-width: 260px;
@@ -319,6 +346,8 @@
 </style>
 </head>
 <body>
+
+<button class="skip-btn" onclick="skipToGrounding()">Skip</button>
 
 <div class="container">
   <div class="main-content">
@@ -568,7 +597,7 @@ const phaseTexts = {
 
 // Reassurance messages — one per cycle, shown during holdFull (peak calm moment)
 const reassuranceMessages = [
-  "This will pass. You're safe right now.",
+  "This will pass.<br>You're safe right now.",
   "Your body is just responding.<br>There's no real danger.",
   "You're doing great.<br>Stay with the rhythm.",
   "You're already coming back.<br>One breath at a time."
@@ -629,11 +658,12 @@ function advancePhase(timestamp) {
 
     if (currentCycle >= TOTAL_CYCLES) {
       phase = 'done';
+      document.querySelector('.skip-btn').classList.remove('visible');
       phaseLabel.textContent = phaseTexts.done;
       timerProgress.setAttribute('stroke-dashoffset', circumference);
       hideReassurance();
       document.getElementById('cycleDots').style.display = 'none';
-      completionSub.textContent = "Your breathing is steady again. Let's anchor you to the present.";
+      completionSub.innerHTML = "Your breathing is steady again.<br>Let's anchor you to the present.";
       completionSub.classList.add('visible');
       completion.classList.add('visible');
       document.querySelector('.bottom-actions').classList.add('compact');
@@ -667,6 +697,7 @@ function setPhase(newPhase, timestamp) {
 }
 
 function startBreathing() {
+  document.querySelector('.skip-btn').classList.add('visible');
   document.getElementById('startBtn').classList.add('hidden');
   completion.classList.remove('visible');
   completionSub.classList.remove('visible');
@@ -696,6 +727,10 @@ function startBreathing() {
 
 // ─── Grounding (placeholder) ───
 function startGrounding() {
+  window.location.href = 'grounding.html';
+}
+
+function skipToGrounding() {
   window.location.href = 'grounding.html';
 }
 
