@@ -3,14 +3,16 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const HTML_FILE  = '/Users/marinabensusan/Downloads/breathing_sphere.html';
+const HTML_FILE  = '/Users/marinabensusan/Desktop/Light it Challenge/breathing_sphere.html';
 const FRAMES_DIR = '/tmp/breathing_frames';
 const OUTPUT     = '/Users/marinabensusan/Desktop/Light it Challenge/breathing_sphere.mp4';
 const FPS        = 30;
+const INTRO            = 2;   // "Tap to begin" screen
 const BREATHING_DURATION = 46; // 4 cycles × 4 phases × 2875ms = 46s
 const FINAL_SCREEN       = 5;  // static completion screen
-const DURATION   = BREATHING_DURATION + FINAL_SCREEN; // 51s total
-const TOTAL_FRAMES = FPS * DURATION; // 1530
+const DURATION   = INTRO + BREATHING_DURATION + FINAL_SCREEN; // 53s total
+const TOTAL_FRAMES = FPS * DURATION; // 1590
+const INTRO_FRAMES = FPS * INTRO;    // 60
 const VIEWPORT_W = 400;
 const VIEWPORT_H = 800;
 const DPR        = 2;            // HD 2x → 780 × 1688 px
@@ -59,9 +61,6 @@ async function main() {
   fs.writeFileSync(TMP_HTML, patchedHtml);
   await page.goto(`file://${TMP_HTML}`);
 
-  // Auto-start breathing (phaseStart = 0 ms, time starts at 0)
-  await page.evaluate(() => startBreathing());
-
   const frameMs = 1000 / FPS;
   const start = Date.now();
 
@@ -75,6 +74,11 @@ async function main() {
 
     const frameNum = String(i).padStart(5, '0');
     await page.screenshot({ path: `${FRAMES_DIR}/frame_${frameNum}.png` });
+
+    // After the last intro frame, trigger breathing start
+    if (i === INTRO_FRAMES - 1) {
+      await page.evaluate(() => startBreathing());
+    }
 
     if (i % 30 === 0) {
       const elapsed = ((Date.now() - start) / 1000).toFixed(0);
