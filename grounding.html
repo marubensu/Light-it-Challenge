@@ -304,7 +304,7 @@
   </div>
 
   <div class="bottom-actions">
-    <button class="primary-btn" id="primaryBtn" onclick="handlePrimary()">Got it (4 left)</button>
+    <button class="primary-btn" id="primaryBtn" onclick="handlePrimary()">Got it</button>
     <button class="secondary-btn" id="secondaryBtn" onclick="handleSecondary()">Back to breathing</button>
   </div>
 
@@ -479,8 +479,7 @@ function renderStep(index) {
   }, 300);
 
   // Button label
-  const left = TOTAL - 1 - index;
-  primaryBtn.textContent = left === 0 ? "I'm here" : `Got it (${left} left)`;
+  primaryBtn.textContent = 'Got it';
 }
 
 function tick(ts) {
